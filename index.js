@@ -6,11 +6,17 @@ const axios = require('axios');
 const TELEGRAM_BOT_TOKEN = "8766489223:AAFZuFU-Y7ZYshi1PqB2P9rXnbosRyN7dhQ";
 const TELEGRAM_CHAT_ID = "@HAPPYYEMEN2026";
 
-// تهيئة عميل واتساب وحفظ الجلسة محلياً لعدم الحاجة لمسح الرمز مراراً
+// تهيئة عميل واتساب برمجياً
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox'] // ضروري لعمل المتصفح في الخوادم السحابية
+        // إخبار الكود بالمسار الدقيق للمتصفح الذي قمنا بتثبيته عبر ملف Docker
+        executablePath: '/usr/bin/chromium',
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage' // أمر مهم لمنع امتلاء ذاكرة الخادم العشوائية
+        ] 
     }
 });
 
@@ -28,28 +34,28 @@ async function sendToTelegram(text) {
     }
 }
 
-// إنشاء رمز QR في شاشة السجلات لربط رقمك
+// إنشاء رمز الاستجابة السريعة (QR) في شاشة السجلات
 client.on('qr', (qr) => {
-    console.log('[النظام]: يرجى مسح رمز QR التالي باستخدام تطبيق واتساب (الأجهزة المرتبطة):');
+    console.log('\n==================================================');
+    console.log('[النظام]: يرجى مسح رمز QR التالي باستخدام واتساب:');
     qrcode.generate(qr, { small: true });
+    console.log('==================================================\n');
 });
 
 // تأكيد إتمام عملية الربط
 client.on('ready', () => {
-    console.log('[النظام]: تم ربط رقم الواتساب بنجاح! البوت جاهز للاستماع.');
+    console.log('[النظام]: تم ربط رقم الواتساب بنجاح! البوت جاهز ويستمع للرسائل.');
 });
 
-// الاستماع الفوري لكل الرسائل الواردة والصادرة
+// الاستماع الفوري لكل الرسائل الواردة
 client.on('message_create', async (msg) => {
-    // تجاهل الرسائل الفارغة أو القصيرة جداً
     if (!msg.body || msg.body.length < 5) return;
 
     try {
         const chat = await msg.getChat();
         console.log(`[التقاط]: رسالة من (${chat.name || 'غير معروف'})`);
 
-        // في هذه المرحلة سنقوم بإرسال جميع النصوص الطويلة إلى تيليجرام
-        // لاحقاً يمكننا وضع شرط (if) مخصص لاسم القناة فقط بعد تشخيص السجلات
+        // تصفية أولية لتمرير النصوص المناسبة فقط
         if (msg.body.length > 20) {
             await sendToTelegram(msg.body);
         }
@@ -58,5 +64,4 @@ client.on('message_create', async (msg) => {
     }
 });
 
-// بدء التشغيل
 client.initialize();
